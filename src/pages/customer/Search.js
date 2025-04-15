@@ -21,15 +21,12 @@ import {
   Chip,
   Divider,
   CircularProgress,
-  FormGroup,
-  FormControlLabel,
-  Checkbox,
-  Slider,
+  Alert,
   InputAdornment
 } from '@mui/material';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { LocalizationProvider, DatePicker, TimePicker } from '@mui/x-date-pickers';
-import { format, parseISO } from 'date-fns';
+import { format, parse } from 'date-fns';
 import { 
   Search as SearchIcon, 
   FilterList as FilterIcon, 
@@ -37,90 +34,8 @@ import {
   Star, 
   AttachMoney
 } from '@mui/icons-material';
-
-// Mock data for restaurants
-const mockRestaurants = [
-  {
-    id: 1,
-    name: 'The Gourmet Kitchen',
-    cuisine: 'International',
-    rating: 4.8,
-    cost_rating: 4,
-    address: '123 Main St, Anytown',
-    city: 'Anytown',
-    state: 'NY',
-    zip_code: '10001',
-    image_url: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4',
-    description: 'Experience fine dining with our award-winning international cuisine in an elegant setting.',
-    reviews_count: 248,
-    bookings_today: 15,
-    available_times: ['18:00', '18:30', '19:30', '20:00', '21:00']
-  },
-  {
-    id: 2,
-    name: 'Seaside Delights',
-    cuisine: 'Seafood',
-    rating: 4.5,
-    cost_rating: 3,
-    address: '456 Ocean Blvd, Beachtown',
-    city: 'Beachtown',
-    state: 'CA',
-    zip_code: '90210',
-    image_url: 'https://images.unsplash.com/photo-1556742049-0cfed4f6a45d',
-    description: 'Fresh seafood prepared with passion, offering ocean views and a relaxed atmosphere.',
-    reviews_count: 186,
-    bookings_today: 8,
-    available_times: ['17:30', '18:00', '18:30', '19:00', '20:30']
-  },
-  {
-    id: 3,
-    name: 'Bella Italia',
-    cuisine: 'Italian',
-    rating: 4.7,
-    cost_rating: 3,
-    address: '789 Pasta Lane, Italyville',
-    city: 'Italyville',
-    state: 'NJ',
-    zip_code: '07001',
-    image_url: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5',
-    description: 'Authentic Italian cuisine with homemade pasta and wood-fired pizzas in a cozy setting.',
-    reviews_count: 215,
-    bookings_today: 12,
-    available_times: ['17:00', '18:30', '19:00', '20:00', '21:30']
-  },
-  {
-    id: 4,
-    name: 'Spice Route',
-    cuisine: 'Indian',
-    rating: 4.6,
-    cost_rating: 2,
-    address: '101 Curry St, Spicetown',
-    city: 'Spicetown',
-    state: 'TX',
-    zip_code: '77001',
-    image_url: 'https://images.unsplash.com/photo-1505253758473-96b7015fcd40',
-    description: 'A culinary journey through India with aromatic spices and traditional recipes.',
-    reviews_count: 178,
-    bookings_today: 7,
-    available_times: ['18:00', '19:00', '19:30', '20:30', '21:00']
-  },
-  {
-    id: 5,
-    name: 'Sushi Master',
-    cuisine: 'Japanese',
-    rating: 4.9,
-    cost_rating: 4,
-    address: '202 Sakura Ave, Nipponville',
-    city: 'Nipponville',
-    state: 'WA',
-    zip_code: '98001',
-    image_url: 'https://images.unsplash.com/photo-1553621042-f6e147245754',
-    description: 'Expertly crafted sushi and traditional Japanese dishes in an authentic setting.',
-    reviews_count: 320,
-    bookings_today: 18,
-    available_times: ['17:30', '18:00', '19:00', '20:00', '21:30']
-  }
-];
+import { searchRestaurants } from '../../services/restaurantService';
+import { toast } from 'react-toastify';
 
 const Search = () => {
   const location = useLocation();
@@ -130,7 +45,9 @@ const Search = () => {
   // Parse and set initial search parameters from URL
   const initialSearchParams = {
     date: queryParams.get('date') ? new Date(queryParams.get('date')) : new Date(),
-    time: queryParams.get('time') ? new Date(`2000-01-01T${queryParams.get('time')}`) : new Date(),
+    time: queryParams.get('time') ? 
+      parse(queryParams.get('time'), 'HH:mm', new Date()) : 
+      new Date(new Date().setHours(19, 0, 0, 0)), // Default to 7:00 PM
     partySize: parseInt(queryParams.get('partySize')) || 2,
     location: queryParams.get('location') || ''
   };
@@ -149,6 +66,7 @@ const Search = () => {
   // State for search results
   const [restaurants, setRestaurants] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   
   // Cuisine options for filter
   const cuisineOptions = ['Italian', 'Chinese', 'Japanese', 'Indian', 'Mexican', 'American', 'French', 'Seafood', 'International'];
@@ -157,40 +75,38 @@ const Search = () => {
   useEffect(() => {
     const fetchRestaurants = async () => {
       setLoading(true);
+      setError(null);
       
-      // In a real application, this would be an API call with the search parameters
-      // For now, we'll use a setTimeout to simulate an API call with mock data
-      setTimeout(() => {
-        // Filter mock data based on search parameters and filters
-        const filteredRestaurants = mockRestaurants.filter(restaurant => {
-          // Apply cuisine filter if any cuisines are selected
-          if (filters.cuisines.length > 0 && !filters.cuisines.includes(restaurant.cuisine)) {
-            return false;
-          }
-          
-          // Apply rating filter
-          if (restaurant.rating < filters.rating) {
-            return false;
-          }
-          
-          // Apply price range filter
-          if (restaurant.cost_rating < filters.priceRange[0] || restaurant.cost_rating > filters.priceRange[1]) {
-            return false;
-          }
-          
-          // Apply location filter if provided
-          if (searchParams.location && 
-              !(restaurant.city.toLowerCase().includes(searchParams.location.toLowerCase()) || 
-                restaurant.zip_code.includes(searchParams.location))) {
-            return false;
-          }
-          
-          return true;
-        });
+      try {
+        // Format date for API request
+        const formattedDate = format(searchParams.date, 'yyyy-MM-dd');
+        const formattedTime = format(searchParams.time, 'HH:mm');
         
-        setRestaurants(filteredRestaurants);
+        // Prepare search parameters
+        const apiParams = {
+          date: formattedDate,
+          time: formattedTime,
+          party_size: searchParams.partySize,
+          location: searchParams.location || undefined,
+          cuisine_type: filters.cuisines.length > 0 ? filters.cuisines[0] : undefined,
+          rating: filters.rating > 0 ? filters.rating : undefined,
+          price_range: filters.priceRange[1] < 5 ? filters.priceRange[1] : undefined
+        };
+        
+        const response = await searchRestaurants(apiParams);
+        
+        if (response.success) {
+          setRestaurants(response.restaurants || []);
+        } else {
+          setError(response.message || 'Failed to fetch restaurants');
+          toast.error(response.message || 'Failed to fetch restaurants');
+        }
+      } catch (err) {
+        setError('An unexpected error occurred. Please try again later.');
+        toast.error('An unexpected error occurred. Please try again later.');
+      } finally {
         setLoading(false);
-      }, 1000);
+      }
     };
     
     fetchRestaurants();
@@ -213,7 +129,7 @@ const Search = () => {
     const formattedTime = format(searchParams.time, 'HH:mm');
     
     navigate(
-      `/search?date=${formattedDate}&time=${formattedTime}&partySize=${searchParams.partySize}&location=${encodeURIComponent(searchParams.location)}`,
+      `/search?date=${formattedDate}&time=${formattedTime}&partySize=${searchParams.partySize}&location=${encodeURIComponent(searchParams.location || '')}`,
       { replace: true }
     );
   };
@@ -453,6 +369,13 @@ const Search = () => {
         {loading ? 'Searching...' : `${restaurants.length} restaurants available`}
       </Typography>
       
+      {/* Error Message */}
+      {error && (
+        <Alert severity="error" sx={{ mb: 4 }}>
+          {error}
+        </Alert>
+      )}
+      
       {loading ? (
         <Box sx={{ display: 'flex', justifyContent: 'center', my: 8 }}>
           <CircularProgress />
@@ -468,7 +391,7 @@ const Search = () => {
                     width: { xs: '100%', sm: 200 },
                     height: { xs: 200, sm: 'auto' }
                   }}
-                  image={restaurant.image_url}
+                  image={restaurant.primary_photo ? `${process.env.REACT_APP_API_URL}${restaurant.primary_photo}` : 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4'}
                   alt={restaurant.name}
                 />
                 <Box sx={{ display: 'flex', flexDirection: 'column', width: '100%' }}>
@@ -479,30 +402,32 @@ const Search = () => {
                     
                     <Box display="flex" alignItems="center" sx={{ mb: 1 }}>
                       <Rating 
-                        value={restaurant.rating} 
+                        value={restaurant.average_rating || 0} 
                         precision={0.1} 
                         readOnly 
                         size="small" 
                       />
                       <Typography variant="body2" sx={{ ml: 1 }}>
-                        {restaurant.rating} ({restaurant.reviews_count} reviews)
+                        {restaurant.average_rating ? `${restaurant.average_rating.toFixed(1)} (${restaurant.reviews_count} reviews)` : 'No reviews yet'}
                       </Typography>
                     </Box>
                     
                     <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                      {restaurant.cuisine} • {getCostRating(restaurant.cost_rating)}
+                      {restaurant.cuisine_type} • {getCostRating(restaurant.cost_rating)}
                     </Typography>
                     
                     <Typography variant="body2" sx={{ mb: 1 }}>
-                      {restaurant.address}, {restaurant.city}, {restaurant.state} {restaurant.zip_code}
+                      {restaurant.address_line1}, {restaurant.city}, {restaurant.state} {restaurant.zip_code}
                     </Typography>
                     
                     <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                      Booked {restaurant.bookings_today} times today
+                      Booked {restaurant.bookings_today || 0} times today
                     </Typography>
                     
                     <Typography variant="body2">
-                      {restaurant.description}
+                      {restaurant.description?.length > 150 
+                        ? `${restaurant.description.substring(0, 150)}...` 
+                        : restaurant.description}
                     </Typography>
                   </CardContent>
                   
@@ -520,7 +445,7 @@ const Search = () => {
                     </Typography>
                     
                     <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, justifyContent: { xs: 'center', md: 'flex-start' } }}>
-                      {restaurant.available_times.map((time) => (
+                      {restaurant.available_times && restaurant.available_times.map((time) => (
                         <Button
                           key={time}
                           variant="outlined"
@@ -531,6 +456,11 @@ const Search = () => {
                           {time}
                         </Button>
                       ))}
+                      {!restaurant.available_times && (
+                        <Typography variant="body2" color="text.secondary">
+                          No available times for the selected criteria
+                        </Typography>
+                      )}
                     </Box>
                   </Box>
                 </Box>

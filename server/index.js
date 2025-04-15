@@ -4,6 +4,7 @@ const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
 const path = require('path');
+const { handleUploadError } = require('./utils/fileUpload');
 
 // Initialize Express app
 const app = express();
@@ -19,14 +20,17 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 const db = require('./config/database');
 
 // Test database connection
-db.getConnection()
-  .then(connection => {
+async function testDbConnection() {
+  try {
+    const connection = await db.getConnection();
     console.log('Database connected successfully');
     connection.release();
-  })
-  .catch(err => {
+  } catch (err) {
     console.error('Database connection error:', err);
-  });
+  }
+}
+
+testDbConnection();
 
 // Routes
 app.use('/api/auth', require('./routes/auth'));
@@ -34,6 +38,9 @@ app.use('/api/restaurants', require('./routes/restaurants'));
 app.use('/api/reservations', require('./routes/reservations'));
 app.use('/api/reviews', require('./routes/reviews'));
 app.use('/api/admin', require('./routes/admin'));
+
+// File upload error handling
+app.use(handleUploadError);
 
 // Default route
 app.get('/', (req, res) => {

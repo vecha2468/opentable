@@ -3,13 +3,12 @@ import axios from 'axios';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
 
-// Handle errors consistently
+// Helper function to handle API errors
 const handleApiError = (error) => {
   console.error('API Error:', error);
   
   if (error.response) {
-    // The request was made and the server responded with a status code
-    // that falls out of the range of 2xx
+    // The request was made and the server responded with an error status
     return {
       success: false,
       message: error.response.data.message || 'An error occurred',
@@ -22,7 +21,7 @@ const handleApiError = (error) => {
       message: 'No response from server. Please check your internet connection.'
     };
   } else {
-    // Something happened in setting up the request that triggered an Error
+    // Something happened in setting up the request
     return {
       success: false,
       message: error.message || 'An unknown error occurred'
@@ -63,12 +62,35 @@ export const getRestaurantById = async (id) => {
 // Create a new restaurant (for restaurant managers)
 export const createRestaurant = async (restaurantData, token) => {
   try {
-    const response = await axios.post(`${API_URL}/restaurants`, restaurantData, {
-      headers: {
-        'x-auth-token': token,
-        'Content-Type': 'multipart/form-data'  // For uploading images
+    // Create FormData for handling file uploads
+    const formData = new FormData();
+    
+    // Add basic restaurant data
+    Object.keys(restaurantData).forEach(key => {
+      if (key !== 'photos' && key !== 'operating_hours') {
+        formData.append(key, restaurantData[key]);
       }
     });
+    
+    // Add operating hours as JSON string
+    if (restaurantData.operating_hours && Array.isArray(restaurantData.operating_hours)) {
+      formData.append('operating_hours', JSON.stringify(restaurantData.operating_hours));
+    }
+    
+    // Add photos
+    if (restaurantData.photos && restaurantData.photos.length > 0) {
+      for (let i = 0; i < restaurantData.photos.length; i++) {
+        formData.append('photos', restaurantData.photos[i]);
+      }
+    }
+    
+    const response = await axios.post(`${API_URL}/restaurants`, formData, {
+      headers: {
+        'x-auth-token': token,
+        'Content-Type': 'multipart/form-data'
+      }
+    });
+    
     return response.data;
   } catch (error) {
     return handleApiError(error);
@@ -78,12 +100,40 @@ export const createRestaurant = async (restaurantData, token) => {
 // Update restaurant (for restaurant managers)
 export const updateRestaurant = async (id, restaurantData, token) => {
   try {
-    const response = await axios.put(`${API_URL}/restaurants/${id}`, restaurantData, {
-      headers: {
-        'x-auth-token': token,
-        'Content-Type': 'multipart/form-data'  // For uploading images
+    // Create FormData for handling file uploads
+    const formData = new FormData();
+    
+    // Add basic restaurant data
+    Object.keys(restaurantData).forEach(key => {
+      if (key !== 'photos' && key !== 'operating_hours') {
+        formData.append(key, restaurantData[key]);
       }
     });
+    
+    // Add operating hours as JSON string
+    if (restaurantData.operating_hours && Array.isArray(restaurantData.operating_hours)) {
+      formData.append('operating_hours', JSON.stringify(restaurantData.operating_hours));
+    }
+    
+    // Add photos
+    if (restaurantData.photos && restaurantData.photos.length > 0) {
+      for (let i = 0; i < restaurantData.photos.length; i++) {
+        formData.append('photos', restaurantData.photos[i]);
+      }
+    }
+    
+    // Add flag for making first image primary
+    if (restaurantData.makeFirstImagePrimary) {
+      formData.append('makeFirstImagePrimary', 'true');
+    }
+    
+    const response = await axios.put(`${API_URL}/restaurants/${id}`, formData, {
+      headers: {
+        'x-auth-token': token,
+        'Content-Type': 'multipart/form-data'
+      }
+    });
+    
     return response.data;
   } catch (error) {
     return handleApiError(error);
@@ -98,6 +148,7 @@ export const deleteRestaurant = async (id, token) => {
         'x-auth-token': token
       }
     });
+    
     return response.data;
   } catch (error) {
     return handleApiError(error);
@@ -114,28 +165,33 @@ export const getRestaurantReviews = async (restaurantId) => {
   }
 };
 
-// Submit a restaurant review
-export const submitReview = async (reviewData, token) => {
+// Get restaurant manager's restaurants
+export const getManagerRestaurants = async (token) => {
   try {
-    const response = await axios.post(`${API_URL}/reviews`, reviewData, {
+    const response = await axios.get(`${API_URL}/restaurants/manager/list`, {
       headers: {
         'x-auth-token': token
       }
     });
+    
     return response.data;
   } catch (error) {
     return handleApiError(error);
   }
 };
 
-// Get restaurant manager's restaurants
-export const getManagerRestaurants = async (token) => {
+// Check restaurant availability
+export const checkAvailability = async (restaurantId, date, time, partySize) => {
   try {
-    const response = await axios.get(`${API_URL}/restaurants/manager`, {
-      headers: {
-        'x-auth-token': token
+    const response = await axios.get(`${API_URL}/reservations/availability`, {
+      params: {
+        restaurant_id: restaurantId,
+        date,
+        time, 
+        party_size: partySize
       }
     });
+    
     return response.data;
   } catch (error) {
     return handleApiError(error);
@@ -150,6 +206,6 @@ export default {
   updateRestaurant,
   deleteRestaurant,
   getRestaurantReviews,
-  submitReview,
-  getManagerRestaurants
+  getManagerRestaurants,
+  checkAvailability
 };
