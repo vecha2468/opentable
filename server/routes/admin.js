@@ -1,36 +1,47 @@
 // server/routes/admin.js
 const express = require('express');
 const router = express.Router();
+const { check } = require('express-validator');
+const adminController = require('../controllers/adminController');
 const { auth, isAdmin } = require('../middleware/auth');
 
 // All routes in this file require admin privileges
 router.use(auth, isAdmin);
 
-// Placeholder route handlers to be implemented later
-router.get('/dashboard', (req, res) => {
-  res.json({ message: 'Admin dashboard data - To be implemented' });
-});
+// @route   GET api/admin/dashboard
+// @desc    Get dashboard statistics
+// @access  Private (Admin only)
+router.get('/dashboard', adminController.getDashboardStats);
 
-router.get('/restaurants/pending', (req, res) => {
-  res.json({ message: 'Get pending restaurant approvals - To be implemented' });
-});
+// @route   GET api/admin/users
+// @desc    Get all users with filtering
+// @access  Private (Admin only)
+router.get('/users', adminController.getAllUsers);
 
-router.put('/restaurants/:id/approve', (req, res) => {
-  res.json({ message: 'Approve restaurant - To be implemented' });
-});
+// @route   GET api/admin/users/:id
+// @desc    Get user details
+// @access  Private (Admin only)
+router.get('/users/:id', adminController.getUserDetails);
 
-router.put('/restaurants/:id/reject', (req, res) => {
-  res.json({ message: 'Reject restaurant - To be implemented' });
-});
+// @route   PUT api/admin/users/:id/role
+// @desc    Update user role
+// @access  Private (Admin only)
+router.put(
+  '/users/:id/role',
+  [
+    check('role', 'Role is required').isIn(['customer', 'restaurant_manager', 'admin'])
+  ],
+  adminController.updateUserRole
+);
 
-router.get('/reservations/stats', (req, res) => {
-  res.json({ message: 'Get reservation statistics - To be implemented' });
-});
+// @route   GET api/admin/restaurants
+// @desc    Get all restaurants with filtering
+// @access  Private (Admin only)
+router.get('/restaurants', adminController.getAllRestaurants);
 
-router.get('/users', (req, res) => {
-  res.json({ message: 'Get all users - To be implemented' });
-});
-
-// More admin routes will be added in the future
+// @route   GET api/admin/export
+// @desc    Export data (for reports)
+// @access  Private (Admin only)
+router.get('/export', adminController.exportData);
 
 module.exports = router;

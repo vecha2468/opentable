@@ -1,4 +1,4 @@
-// src/services/reservationService.js
+// src/services/adminService.js
 import axios from 'axios';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
@@ -29,10 +29,10 @@ const handleApiError = (error) => {
   }
 };
 
-// Create a new reservation
-export const createReservation = async (reservationData, token) => {
+// Get dashboard statistics
+export const getDashboardStats = async (token) => {
   try {
-    const response = await axios.post(`${API_URL}/reservations`, reservationData, {
+    const response = await axios.get(`${API_URL}/admin/dashboard`, {
       headers: {
         'x-auth-token': token
       }
@@ -44,10 +44,11 @@ export const createReservation = async (reservationData, token) => {
   }
 };
 
-// Get user's reservations
-export const getUserReservations = async (token) => {
+// Get all users (with filtering)
+export const getAllUsers = async (params, token) => {
   try {
-    const response = await axios.get(`${API_URL}/reservations/user`, {
+    const response = await axios.get(`${API_URL}/admin/users`, {
+      params,
       headers: {
         'x-auth-token': token
       }
@@ -59,11 +60,10 @@ export const getUserReservations = async (token) => {
   }
 };
 
-// Get restaurant's reservations (for restaurant managers)
-export const getRestaurantReservations = async (restaurantId, date, token) => {
+// Get user details
+export const getUserDetails = async (userId, token) => {
   try {
-    const response = await axios.get(`${API_URL}/reservations/restaurant/${restaurantId}`, {
-      params: { date },
+    const response = await axios.get(`${API_URL}/admin/users/${userId}`, {
       headers: {
         'x-auth-token': token
       }
@@ -75,10 +75,29 @@ export const getRestaurantReservations = async (restaurantId, date, token) => {
   }
 };
 
-// Update reservation status
-export const updateReservation = async (reservationId, updateData, token) => {
+// Update user role
+export const updateUserRole = async (userId, role, token) => {
   try {
-    const response = await axios.put(`${API_URL}/reservations/${reservationId}`, updateData, {
+    const response = await axios.put(`${API_URL}/admin/users/${userId}/role`, 
+      { role },
+      {
+        headers: {
+          'x-auth-token': token
+        }
+      }
+    );
+    
+    return response.data;
+  } catch (error) {
+    return handleApiError(error);
+  }
+};
+
+// Get all restaurants (with filtering)
+export const getAllRestaurants = async (params, token) => {
+  try {
+    const response = await axios.get(`${API_URL}/admin/restaurants`, {
+      params,
       headers: {
         'x-auth-token': token
       }
@@ -90,10 +109,10 @@ export const updateReservation = async (reservationId, updateData, token) => {
   }
 };
 
-// Cancel reservation
-export const cancelReservation = async (reservationId, token) => {
+// Get pending restaurant approvals
+export const getPendingRestaurants = async (token) => {
   try {
-    const response = await axios.delete(`${API_URL}/reservations/${reservationId}`, {
+    const response = await axios.get(`${API_URL}/restaurants/admin/pending`, {
       headers: {
         'x-auth-token': token
       }
@@ -105,17 +124,17 @@ export const cancelReservation = async (reservationId, token) => {
   }
 };
 
-// Check availability for a restaurant
-export const checkAvailability = async (restaurantId, date, time, partySize) => {
+// Approve restaurant
+export const approveRestaurant = async (restaurantId, token) => {
   try {
-    const response = await axios.get(`${API_URL}/reservations/availability`, {
-      params: {
-        restaurant_id: restaurantId,
-        date,
-        time,
-        party_size: partySize
+    const response = await axios.put(`${API_URL}/restaurants/${restaurantId}/approve`, 
+      {},
+      {
+        headers: {
+          'x-auth-token': token
+        }
       }
-    });
+    );
     
     return response.data;
   } catch (error) {
@@ -123,10 +142,11 @@ export const checkAvailability = async (restaurantId, date, time, partySize) => 
   }
 };
 
-// Get reservation statistics (for restaurant managers or admins)
-export const getReservationStats = async (token) => {
+// Export data for reports
+export const exportData = async (params, token) => {
   try {
-    const response = await axios.get(`${API_URL}/reservations/stats`, {
+    const response = await axios.get(`${API_URL}/admin/export`, {
+      params,
       headers: {
         'x-auth-token': token
       }
@@ -139,11 +159,12 @@ export const getReservationStats = async (token) => {
 };
 
 export default {
-  createReservation,
-  getUserReservations,
-  getRestaurantReservations,
-  updateReservation,
-  cancelReservation,
-  checkAvailability,
-  getReservationStats
+  getDashboardStats,
+  getAllUsers,
+  getUserDetails,
+  updateUserRole,
+  getAllRestaurants,
+  getPendingRestaurants,
+  approveRestaurant,
+  exportData
 };
